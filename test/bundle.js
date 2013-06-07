@@ -2,10 +2,9 @@ var test = require('tap').test;
 var browserify = require('browserify');
 var vm = require('vm');
 
-function bundle (file) {
-    test('bundle transform', function (t) {
+function bundle (description, file) {
+    test('bundle transform handles ' + description, function (t) {
         t.plan(1);
-
         var b = browserify();
         b.add(__dirname + file);
         b.transform(__dirname + '/..');
@@ -22,5 +21,10 @@ function bundle (file) {
     });
 }
 
-bundle('/../example/foo.coffee');
-bundle('/../example/foo.litcoffee');
+bundle('coffee root with explicit extensions', '/../example/foo.coffee');
+bundle('litcoffee root with explicit extensions', '/../example/foo.litcoffee');
+
+// Test automatic .coffee/.litcoffee extension handling.
+bundle('coffee root with resolved js extensions', '/../example/zap1.coffee');
+bundle('litcoffee root with resolved coffee extensions', '/../example/zap2.litcoffee');
+bundle('js root with resolved litcoffee extensions', '/../example/zap3.js');
