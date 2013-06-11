@@ -80,7 +80,7 @@ ParseError.prototype.inspect = function () {
 };
 
 var compileCache = {};
-function compile(file, data, callback) {
+function compileWithCaching(file, data, callback) {
   fs.stat(file, function(error, fileStats) {
     if (error) return callback(error);
 
@@ -92,7 +92,7 @@ function compile(file, data, callback) {
 
     // Otherwise, cache the compiled code before sending it along.
     } else {
-      rawCompile(file, data, function(error, result) {
+      coffeeify.compile(file, data, function(error, result) {
         if (error) return callback(error);
         compileCache[file] = {mtime: fileStats.mtime, result: result};
         callback(null, result);
@@ -101,7 +101,7 @@ function compile(file, data, callback) {
   });
 }
 
-function rawCompile(file, data, callback) {
+function compile(file, data, callback) {
     var compiled;
     try {
         compiled = coffee.compile(data, {
@@ -142,7 +142,7 @@ function coffeeify(file) {
             // Compile CoffeeScript files before transforming
             // any calls to require().
             if (isCoffee(file)) {
-              compile(file, data, function(error, result) {
+              compileWithCaching(file, data, function(error, result) {
                   if (error) return stream.emit('error', error);
                   try {
                       stream.queue(makeCoffeeRequiresExplicit(file, result));
