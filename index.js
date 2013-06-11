@@ -79,7 +79,29 @@ ParseError.prototype.inspect = function () {
     return this.annotated;
 };
 
+var compileCache = {};
 function compile(file, data, callback) {
+  fs.stat(file, function(error, fileStats) {
+    if (error) return callback(error);
+
+    // Respond from the cache if the modification time of the file
+    // is the same as last time.
+    var cacheEntry = compileCache[file];
+    if (cacheEntry && cacheEntry.mtime === fileStats.mtime) {
+      callback(null, cacheEntry.result);
+
+    // Otherwise, cache the compiled code before sending it along.
+    } else {
+      rawCompile(file, data, function(error, result) {
+        if (error) return callback(error);
+        compileCache[file] = {mtime: fileStats.mtime, result: result};
+        callback(null, result);
+      });
+    }
+  });
+}
+
+function rawCompile(file, data, callback) {
     var compiled;
     try {
         compiled = coffee.compile(data, {
