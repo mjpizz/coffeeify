@@ -87,7 +87,7 @@ function compile(file, data, callback) {
     // Respond from the cache if the modification time of the file
     // is the same as last time.
     var cacheEntry = compileCache[file];
-    if (cacheEntry && cacheEntry.mtime === fileStats.mtime) {
+    if (cacheEntry && +cacheEntry.mtime === +fileStats.mtime) {
       callback(null, cacheEntry.result);
 
     // Otherwise, cache the compiled code before sending it along.
