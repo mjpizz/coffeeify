@@ -13,6 +13,10 @@ function isLiterate (file) {
     return (/\.(litcoffee|coffee\.md)$/).test(file);
 }
 
+function isPath (file) {
+    return (/^(\.|\/)/).test(file);
+}
+
 function getExtension (file) {
   var matches = /(\.[^\.\/\\]+)$/.exec(file);
   return matches ? matches[1] : null;
@@ -26,18 +30,18 @@ function makeCoffeeRequiresExplicit (file, jsData) {
         if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'require') {
             var requireArgNode = node.arguments[0];
             var requireArg = requireArgNode.value;
-            if (typeof requireArg === 'string' && !getExtension(requireArg)) {
+            if (typeof requireArg === 'string' && !getExtension(requireArg) && isPath(requireArg)) {
 
                 // Try to resolve the actual file to see if it is CoffeeScript.
                 var fullPath = path.resolve(path.join(path.dirname(file), requireArg));
                 var modulePath = require.resolve(fullPath);
-                var moduleExtension = getExtension(modulePath);
+                var extra = modulePath.replace(fullPath, '');
 
                 // If this was requiring a CoffeeScript file, update the require
                 // to explicitly include the extension so that browserify
                 // will pick it up in its dependency graph.
                 if (isCoffee(modulePath)) {
-                    requireArgNode.update(JSON.stringify(requireArg + moduleExtension));
+                    requireArgNode.update(JSON.stringify(requireArg + extra));
                 }
 
             }
