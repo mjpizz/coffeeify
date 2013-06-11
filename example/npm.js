@@ -1,1 +1,2 @@
-console.log(require('./baz')((require('methods').length + 2) / 5));
+require('falafel');
+console.log(555);

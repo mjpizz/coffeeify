@@ -11,8 +11,7 @@
     },
     "devDependencies": {
         "tap": "~0.4.0",
-        "browserify": "2.x",
-        "methods": "~0.0.1"
+        "browserify": "2.x"
     },
     "scripts": {
         "test": "tap test/*.js"
