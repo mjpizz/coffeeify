@@ -50,7 +50,6 @@ function testCachedBuild(extension, preCode) {
         process.on('exit', cleanup);
         process.on('uncaughtException', cleanup);
         process.on('SIGINT', cleanup);
-        process.on('SIGKILL', cleanup);
 
         // Create the bundle.
         var b = browserify();
