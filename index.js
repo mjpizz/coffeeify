@@ -79,28 +79,6 @@ ParseError.prototype.inspect = function () {
     return this.annotated;
 };
 
-var compileCache = {};
-function compileWithCaching(file, data, callback) {
-  fs.stat(file, function(error, fileStats) {
-    if (error) return callback(error);
-
-    // Respond from the cache if the modification time of the file
-    // is the same as last time.
-    var cacheEntry = compileCache[file];
-    if (cacheEntry && +cacheEntry.mtime === +fileStats.mtime) {
-      callback(null, cacheEntry.result);
-
-    // Otherwise, cache the compiled code before sending it along.
-    } else {
-      coffeeify.compile(file, data, function(error, result) {
-        if (error) return callback(error);
-        compileCache[file] = {mtime: fileStats.mtime, result: result};
-        callback(null, result);
-      });
-    }
-  });
-}
-
 function compile(file, data, callback) {
     var compiled;
     try {
@@ -126,9 +104,37 @@ function compile(file, data, callback) {
     callback(null, compiled.js + '\n' + map.toComment());
 }
 
+function Cache(filepath) {
+    this.mtime = null;
+    this.contents = null;
+    this.filepath = filepath;
+}
+
+Cache.prototype.set = function (contents) {
+    this.mtime = null;
+    this.contents = contents;
+    fs.stat(this.filepath, function(error, fileStats) {
+        if (!error) {
+            this.mtime = +fileStats.mtime;
+        }
+    }.bind(this));
+}
+
+Cache.prototype.get = function (callback) {
+    fs.stat(this.filepath, function(error, fileStats) {
+        if (error) return callback(error);
+        if (this.mtime !== +fileStats.mtime) {
+            this.contents = null;
+        }
+        callback(null, this.contents);
+    }.bind(this));
+}
+
+var caches = {};
 function coffeeify(file) {
 
-    var data = '', stream = through(write, end);
+    var data = '', stream = through(write, end), cache;
+    cache = caches[file] = caches[file] || new Cache(file);
 
     return stream;
 
@@ -137,31 +143,45 @@ function coffeeify(file) {
     }
 
     function end() {
-        try {
 
-            // Compile CoffeeScript files before transforming
-            // any calls to require().
-            if (isCoffee(file)) {
-              compileWithCaching(file, data, function(error, result) {
-                  if (error) return stream.emit('error', error);
-                  try {
-                      stream.queue(makeCoffeeRequiresExplicit(file, result));
-                      stream.queue(null);
-                  } catch (e) {
-                      stream.emit('error', e);
-                  }
-              });
+        // Try cached output first.
+        cache.get(function (error, cachedResult) {
+            if (error) return stream.emit('error', error);
+            if (cachedResult) {
+                stream.queue(cachedResult);
+                stream.queue(null);
 
-            // For all other files, we still need to transform calls to
-            // require() so that they have explicit extensions.
+            // Otherwise, generate cacheable Javascript output that has all
+            // require() calls transformed with explicit .coffee extensions.
             } else {
-              stream.queue(makeCoffeeRequiresExplicit(file, data));
-              stream.queue(null);
+
+                function finalize (code) {
+                    try {
+                        var finalCode = makeCoffeeRequiresExplicit(file, code);
+                        cache.set(finalCode);
+                        stream.queue(finalCode);
+                        stream.queue(null);
+                    } catch (e) {
+                        stream.emit('error', e);
+                    }
+                }
+
+                // Compile CoffeeScript before transforming require() calls.
+                if (isCoffee(file)) {
+                    coffeeify.compile(file, data, function(error, result) {
+                        if (error) return stream.emit('error', error);
+                        finalize(result);
+                    });
+
+                // Assume all other files are Javascript and can transform
+                // calls to require() immediately.
+                } else {
+                    finalize(data);
+                }
+
             }
 
-        } catch (e) {
-            stream.emit('error', e);
-        }
+        });
     }
 }
 
