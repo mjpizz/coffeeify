@@ -113,7 +113,7 @@ function Cache(filepath) {
 Cache.prototype.set = function (contents) {
     this.mtime = null;
     this.contents = contents;
-    fs.stat(this.filepath, function(error, fileStats) {
+    fs.stat(this.filepath, function (error, fileStats) {
         if (!error) {
             this.mtime = +fileStats.mtime;
         }
@@ -121,7 +121,7 @@ Cache.prototype.set = function (contents) {
 }
 
 Cache.prototype.get = function (callback) {
-    fs.stat(this.filepath, function(error, fileStats) {
+    fs.stat(this.filepath, function (error, fileStats) {
         if (error) return callback(error);
         if (this.mtime !== +fileStats.mtime) {
             this.contents = null;
@@ -168,7 +168,7 @@ function coffeeify(file) {
 
                 // Compile CoffeeScript before transforming require() calls.
                 if (isCoffee(file)) {
-                    coffeeify.compile(file, data, function(error, result) {
+                    coffeeify.compile(file, data, function (error, result) {
                         if (error) return stream.emit('error', error);
                         finalize(result);
                     });
